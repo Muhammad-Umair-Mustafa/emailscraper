@@ -56,24 +56,39 @@ def scrape_website(url, depth=1):
         return []
 
 def scrape_js_website(url):
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")  # Run in headless mode
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    try:
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
 
-    driver.get(url)
-    page_source = driver.page_source
-    driver.quit()
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        driver.get(url)
+        page_source = driver.page_source
+        driver.quit()
 
-    emails = extract_emails(page_source)
-    return emails
+        emails = extract_emails(page_source)
+        return emails
+    except Exception as e:
+        print(f"Selenium Error: {e}")
+        return []
 
 @app.post("/scrape")
 def scrape(request: ScrapeRequest):
-    emails = scrape_website(request.url)
-    if not emails:
-        # Try using Selenium for JavaScript-heavy websites
-        emails = scrape_js_website(request.url)
-    
-    if not emails:
-        raise HTTPException(status_code=404, detail="No emails found.")
-    return {"emails": emails}
+    try:
+        print(f"Scraping URL: {request.url}")
+
+        emails = scrape_website(request.url)
+        if not emails:
+            print("Trying JavaScript Scraper...")
+            emails = scrape_js_website(request.url)
+
+        if not emails:
+            raise HTTPException(status_code=404, detail="No emails found.")
+
+        print(f"Found emails: {emails}")
+        return {"emails": emails}
+
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
