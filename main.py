@@ -51,6 +51,7 @@ def scrape_website(url, depth=1, visited=None):
 def scrape_js_website(url):
     try:
         options = webdriver.ChromeOptions()
+        options.binary_location = "/usr/bin/chromium-browser"  # Use Chromium on Render
         options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
