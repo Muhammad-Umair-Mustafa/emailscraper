@@ -17,43 +17,36 @@ def extract_emails(text):
     email_pattern = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
     return list(set(re.findall(email_pattern, text)))
 
-def scrape_website(url, depth=1):
-    try:
+def scrape_website(url, depth=1, visited=None):
+    if visited is None:
         visited = set()
+    
+    if url in visited or depth <= 0:
+        return set()
+    
+    visited.add(url)
+    
+    try:
         emails = set()
-        urls_to_scrape = [url]
+        response = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        soup = BeautifulSoup(response.text, "html.parser")
+        emails.update(extract_emails(soup.get_text()))
 
-        for _ in range(depth):  # Control depth to avoid infinite loops
-            new_urls = []
-            for current_url in urls_to_scrape:
-                if current_url in visited:
-                    continue
-                visited.add(current_url)
+        new_urls = []
+        for link in soup.find_all("a", href=True):
+            full_url = urljoin(url, link["href"])
+            parsed_main = urlparse(url).netloc
+            parsed_link = urlparse(full_url).netloc
 
-                response = requests.get(current_url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-                soup = BeautifulSoup(response.text, "html.parser")
-                emails.update(extract_emails(soup.get_text()))
+            if parsed_main == parsed_link and full_url not in visited:
+                new_urls.append(full_url)
 
-                # Extract internal links
-                for link in soup.find_all("a", href=True):
-                    full_url = urljoin(url, link["href"])
-                    parsed_main = urlparse(url).netloc
-                    parsed_link = urlparse(full_url).netloc
+        for new_url in new_urls:
+            emails.update(scrape_website(new_url, depth - 1, visited))
 
-                    if parsed_main == parsed_link and full_url not in visited:
-                        new_urls.append(full_url)
-
-            urls_to_scrape = new_urls  # Move to next depth level
-        
-        # Also check common contact pages
-        common_paths = ["/contact", "/about", "/support", "/help"]
-        for path in common_paths:
-            full_url = urljoin(url, path)
-            emails.update(scrape_website(full_url, depth=0))
-        
-        return list(emails)
+        return emails
     except requests.RequestException:
-        return []
+        return set()
 
 def scrape_js_website(url):
     try:
