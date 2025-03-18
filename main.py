@@ -7,6 +7,7 @@ from urllib.parse import urljoin, urlparse
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+import os
 
 app = FastAPI()
 
@@ -51,7 +52,7 @@ def scrape_website(url, depth=1, visited=None):
 def scrape_js_website(url):
     try:
         options = webdriver.ChromeOptions()
-        options.binary_location = "/usr/bin/chromium-browser"  # Use Chromium on Render
+        options.binary_location = "/usr/bin/chromium"  # Correct Chromium binary path
         options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
